@@ -113,32 +113,25 @@ const deleteSingleUserById = async (req, res, next) => {
 const processRegister = async (req, res, next) => {
   try {
     const { name, email, password, phone, address } = req.body;
-
     const image = req.file;
 
     if (!image) {
-      throw createError(400, "image file is required");
+      throw createError(400, "Image file is required");
     }
 
-     console.log(image)
-
+    // Validate image size
     if (image.size > 1024 * 1024 * 2) {
-      throw createError(400, "File to large.It must be less then 2 MB");
+      throw createError(400, "File too large. It must be less than 2 MB");
     }
-
-     const imageBufferString = image.buffer.toString("base64");
-
-    
-  
 
     const userExists = await checkUserExists(email);
     if (userExists) {
       throw createError(409, "User already exists. Please login.");
     }
 
-    // Create JSON web token
+    // Create JSON web token with user data and image path
     const token = createJSONWebToken(
-      { name, email, password, phone, address, image:imageBufferString },
+      { name, email, password, phone, address, imagePath: image.path },
       jsonActivationKey,
       "15m"
     );
@@ -154,13 +147,12 @@ const processRegister = async (req, res, next) => {
     };
 
     // Send email with nodemailer
-     sendEmail(emailData)
+    sendEmail(emailData);
 
     return successResponse(res, {
-       payload:token,
+      payload: token,
       statusCode: 200,
-
-      message: `Please go to your ${email} for completing your registration process.`,
+      message: `Please check your ${email} for completing your registration process.`,
     });
   } catch (error) {
     next(error);
@@ -171,43 +163,46 @@ const processRegister = async (req, res, next) => {
 
 const activateUserAccount = async (req, res, next) => {
   try {
-    const token = req.body.token;
-    //  console.log(token)
-     
-    if (!token) throw createError(404, "token not found");
+    const { token } = req.body;
+
+    if (!token) throw createError(404, "Token not found");
 
     try {
       const decoded = jwt.verify(token, jsonActivationKey);
-      //  console.log(decoded)
-      if (!decoded) throw createError(401, "unable to verify user");
+
+      if (!decoded) throw createError(401, "Unable to verify user");
 
       const userExists = await User.exists({ email: decoded.email });
       if (userExists) {
         throw createError(409, "User already exists. Please login.");
       }
-       
-         const image = decoded.image
-         if(image){
-           const response = await cloudinary.uploader.upload(image,{
-            folder:'ecommerce'
-           })
-          //  console.log(response)
-           decoded.image = response.secure_url
-         }
 
+      // Upload image to Cloudinary
+      const uploadResponse = await cloudinary.uploader.upload(decoded.imagePath, {
+        folder: 'ecommerce'
+      });
 
-      await User.create(decoded);
+      // Create new user with the decoded data and Cloudinary image URL
+      const newUser = new User({
+        name: decoded.name,
+        email: decoded.email,
+        password: decoded.password,
+        phone: decoded.phone,
+        address: decoded.address,
+        image: uploadResponse.secure_url
+      });
+
+      await newUser.save();
 
       return successResponse(res, {
         statusCode: 201,
-        message: "user register successfully",
-       
+        message: "User registered successfully",
       });
     } catch (error) {
-      if (error.name === "TokenExpiredErroe") {
-        throw createError(401, "token has expired ");
-      } else if (error.name === "jsonWebTokenError") {
-        throw createError(401, "invalid token ");
+      if (error.name === "TokenExpiredError") {
+        throw createError(401, "Token has expired");
+      } else if (error.name === "JsonWebTokenError") {
+        throw createError(401, "Invalid token");
       } else {
         throw error;
       }
@@ -221,25 +216,15 @@ const activateUserAccount = async (req, res, next) => {
 
 
 
-
-
-
-
-
-
-
-
-
 //update single user by id
 const updateUserById = async (req, res, next) => {
   try {
     const userId = req.params.id;
-     const options ={password:0}
-   
+    const options = { password: 0 };
+
     await findWithId(User, userId, options);
 
     const updateOptions = { new: true, runValidators: true, context: "query" };
-    //name, email, password, phone, address,image
     let updates = {};
     const allowedFields = ["name", "password", "phone", "address"];
 
@@ -247,21 +232,23 @@ const updateUserById = async (req, res, next) => {
       if (allowedFields.includes(key)) {
         updates[key] = req.body[key];
       } else if (key === "email") {
-        throw new Error("Email can not be updated");
+        throw new Error("Email cannot be updated");
       }
     }
 
     const image = req.file;
     if (image) {
-      //image size maximum 2 mb
+      // Validate image size
       if (image.size > 1024 * 1024 * 2) {
-        throw createError(400, "File to large.It must be less then 2 MB");
+        throw createError(400, "File too large. It must be less than 2 MB");
       }
 
-      updates.image = image.buffer.toString("base64");
+      // Upload new image to Cloudinary
+      const uploadResponse = await cloudinary.uploader.upload(image.path, {
+        folder: 'ecommerce'
+      });
+      updates.image = uploadResponse.secure_url;
     }
-
-    // delete updates.email
 
     const updateUser = await User.findByIdAndUpdate(
       userId,
@@ -269,92 +256,20 @@ const updateUserById = async (req, res, next) => {
       updateOptions
     ).select("-password");
 
-    // console.log(updateUser)
-
     if (!updateUser) {
-      // console.log(!updateUser)
-      throw new Error ("User with this id does not exist");
+      throw new Error("User with this id does not exist");
     }
 
     return successResponse(res, {
       statusCode: 200,
-      message: "User update successfully",
+      message: "User updated successfully",
       payload: updateUser,
     });
   } catch (error) {
-   
     next(error);
   }
 };
 
-
-
-
-
-
-
-
-// const updateUserById = async (req, res, next) => {
-//   try {
-//     const userId = req.params.id;
-//     const options = { password: 0 };
-//     await findWithId(User, userId, options);
-
-//     const updateOptions = { new: true, runValidators: true, context: "query" };
-//     let updates = {};
-//     const allowedFields = ["name", "password", "phone", "address"];
-
-//     // Process fields from request body
-//     for (let key in req.body) {
-//       if (allowedFields.includes(key)) {
-//         updates[key] = req.body[key];
-//       } else if (key === "email") {
-//         throw new Error("Email cannot be updated");
-//       }
-//     }
-
-//     // Process uploaded image
-//     if (req.file) {
-//       const image = req.file;
-//       // Check image size
-//       if (image.size > 1024 * 1024 * 2) {
-//         throw createError(400, "File too large. It must be less than 2 MB");
-//       }
-
-//       // Upload image to Cloudinary
-//       const result = await cloudinary.uploader.upload(image.path, { folder: 'user-profiles' });
-
-//       // Add the image URL from Cloudinary to the updates object
-//       updates.image = result.secure_url;
-//     }
-
-//     // Update user in the database
-//     const updateUser = await User.findByIdAndUpdate(
-//       userId,
-//       updates,
-//       updateOptions
-//     ).select("-password");
-
-//     if (!updateUser) {
-//       throw new Error("User with this id does not exist");
-//     }
-
-//     return successResponse(res, {
-//       statusCode: 200,
-//       message: "User updated successfully",
-//       payload: updateUser,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-
-
-
-
-
-//handle ban user  by id
 
 
 
@@ -414,42 +329,7 @@ const handleUnbanUserById = async (req, res, next) => {
   }
 };
 
-//handle handleUpdatePassword
-// const handleUpdatePassword = async (req, res, next) => {
-//   try {
-//     const { oldpassword, newpassword } = req.body;
-//     const userId = req.params.id;
-//     const user = await findWithId(User, userId);
 
-//     //compaire bcryptjs password match
-//     const isPasswordMatch = await bcrypt.compare(oldpassword, user.password);
-//     if (!isPasswordMatch) {
-//       throw new Error("Old Password did not match");
-//     }
-
-//     const filter = { userId };
-//     const update = { $set: { password: newpassword } };
-//     const updateOptions = { new: true };
-
-//     const updateUser = await User.findByIdAndUpdate(
-//       filter,
-//       update,
-//       updateOptions
-//     ).select("-password");
-
-//     if (!updateUser) {
-//       throw createError(400, "User password was not updated");
-//     }
-
-//     return successResponse(res, {
-//       statusCode: 200,
-//       message: "User password was updated successfully",
-//       payload: { updateUser },
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 const handleUpdatePassword = async (req, res, next) => {
   try {
@@ -485,13 +365,6 @@ const handleUpdatePassword = async (req, res, next) => {
     next(error);
   }
 };
-
-
-
-
-
-
-
 
 
 

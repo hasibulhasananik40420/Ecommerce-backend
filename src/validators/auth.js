@@ -37,14 +37,17 @@ const validateUserRegistation = [
     .isLength({ min: 3 })
     .withMessage("Address should be at least 3 characters long"),
 
+
+
     body("image")
     .custom((value, { req }) => {
-      if (!req.file || !req.file.buffer || req.file.buffer.length === 0) {
+      if (!req.file) {
         throw new Error("User image is required");
       }
       return true;
     })
-    .withMessage("Image is required"),
+    .withMessage("User image is required"),
+
 ];
 
 //login validation

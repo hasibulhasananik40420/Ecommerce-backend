@@ -1,37 +1,38 @@
-const Product = require("../models/productModel");
-const slugify = require("slugify");
+
 const { successResponse } = require("./responseController");
 const createError = require("http-errors");
 const {
   createProduct,
   getAllProduct,
   getProduct,
-  deleteSingleProduct,
   updateSingleProduct,
+  deleteSingleProduct,
 
 } = require("../services/productService");
 
-
+const cloudinary = require('../config/cloudinary');
+const Product = require("../models/productModel");
 
 
 //handleCreateProduct
+
 const handleCreateProduct = async (req, res, next) => {
   try {
-    const { name, description, price, quantity, shipping, category } = req.body;
-
+    const { name, description, price, quantity, shipping, sold, category } = req.body;
     const image = req.file;
 
     if (!image) {
-      throw createError(400, "image file is required");
+      throw createError(400, "Image file is required");
     }
-
-    //  console.log(image)
 
     if (image.size > 1024 * 1024 * 2) {
-      throw createError(400, "File to large.It must be less then 2 MB");
+      throw createError(400, "File too large. It must be less than 2 MB");
     }
 
-    const imageBufferString = image.buffer.toString("base64");
+    // Upload image to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(image.path, {
+      folder: 'products'
+    });
 
     const productData = {
       name,
@@ -40,22 +41,22 @@ const handleCreateProduct = async (req, res, next) => {
       category,
       quantity,
       shipping,
-      imageBufferString,
+      sold,
+      image: uploadResponse.secure_url, // Use the Cloudinary URL
     };
 
-    //create product
+    // Create product
     const product = await createProduct(productData);
 
     return successResponse(res, {
       statusCode: 200,
-      message: "Product was create successfully",
+      message: "Product was created successfully",
       payload: product,
     });
   } catch (error) {
     next(error);
   }
 };
-
 
 
 
@@ -112,7 +113,7 @@ const handleGetProduct = async (req, res, next) => {
   }
 };
 
-//handledelete single Product
+// handledelete single Product
 const handleDeleteProduct = async (req, res, next) => {
   try {
     const { slug } = req.params;
@@ -129,26 +130,22 @@ const handleDeleteProduct = async (req, res, next) => {
 
 
 
+
+
 //handle update Product
 const handleUpdateProduct = async (req, res, next) => {
   try {
-    const {slug} = req.params
-
-    
-  const updateProduct = await updateSingleProduct(slug,req)
-    
-    
-
+    const { slug } = req.params;
+    const updateProduct = await updateSingleProduct(slug, req);
     return successResponse(res, {
       statusCode: 200,
-      message: "Product update successfully",
+      message: "Product updated successfully",
       payload: updateProduct,
     });
   } catch (error) {
     next(error);
   }
 };
-
 
 module.exports = {
   handleCreateProduct,

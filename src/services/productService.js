@@ -1,7 +1,11 @@
 const slugify = require("slugify");
 const Product = require("../models/productModel");
+const {deleteImage} = require('../helper/deleteImage')
+const cloudinary = require('../config/cloudinary');
 
-//create product
+
+
+
 const createProduct = async (productData) => {
   const {
     name,
@@ -10,30 +14,41 @@ const createProduct = async (productData) => {
     category,
     quantity,
     shipping,
-    imageBufferString,
+    sold,
+    image,
   } = productData;
 
-  //create product
-  const productExists = await Product.exists({ name: name });
-  if (productExists) {
-    throw new Error("Product with this name allready exists");
+  try {
+    // Check if the product with the same name already exists
+    const productExists = await Product.exists({ name: name });
+    if (productExists) {
+      throw new Error("Product with this name already exists");
+    }
+
+    // Create the product with the Cloudinary image URL
+    const product = await Product.create({
+      name: name,
+      slug: slugify(name),
+      description: description,
+      price: price,
+      quantity: quantity,
+      shipping: shipping,
+      sold:sold,
+      image: image, // Use the Cloudinary URL directly
+      category: category,
+    });
+
+    return product;
+  } catch (error) {
+    throw new Error(error.message);
   }
-
-  // Create product
-
-  const products = await Product.create({
-    name: name,
-    slug: slugify(name),
-    description: description,
-    price: price,
-    quantity: quantity,
-    shipping: shipping,
-    image: imageBufferString,
-    category: category,
-  });
-
-  return products;
 };
+
+
+
+
+
+
 
 //get all product
 const getAllProduct = async (page=1, limit=4,filter={}) => {
@@ -66,7 +81,7 @@ const getProduct = async (slug) => {
 
 
 
-//get delete product
+// delete product
 const deleteSingleProduct = async (slug) => {
   const product = await Product.deleteOne({slug})
 
@@ -77,65 +92,69 @@ const deleteSingleProduct = async (slug) => {
 };
 
 
+
+
+
+
+
 // update single product
 
-const updateSingleProduct = async (slug,req) => {
-     try {
-      
-      const product = await Product.findOne({slug:slug})
+const updateSingleProduct = async (slug, req) => {
+  try {
+    const product = await Product.findOne({ slug });
 
-       if(!product){
-           throw new Error('Product not found')
-       }
+    if (!product) {
+      throw new Error('Product not found');
+    }
 
-      const updateOptions = { new: true, runValidators: true, context: "query" };
-    
-      let updates = {};
-  
-      const allowedFields = ["name", "description", "price", "sold", "quantity","shipping"];
-  
-  
-      for (let key in req.body) {
-        if (allowedFields.includes(key)) {
-           if(key ==='name'){
-            updates.slug = slugify(req.body[key])
-           }
-          updates[key] = req.body[key];
+    const updateOptions = { new: true, runValidators: true, context: "query" };
+    let updates = {};
+    const allowedFields = ["name", "description", "price", "sold", "quantity", "shipping"];
+
+    for (let key in req.body) {
+      if (allowedFields.includes(key)) {
+        if (key === 'name') {
+          updates.slug = slugify(req.body[key]);
         }
+        updates[key] = req.body[key];
       }
-  
-          const image = req.file?.path;
-          if(image){
-             if(image.size > 1024 * 1024 * 2){
-                 throw new Error('File to lagre.Must be less then 2 mb')
-             }
-             updates.image = image 
-             product.image !== 'default.png' && deleteImage(product.image)
-          }
-  
-  
+    }
 
-  const updateProduct = await Product.findOneAndUpdate(
-    {slug},
-    updates,
-    updateOptions
-  )
+    const image = req.file?.path;
+    if (image) {
+      if (image.size > 1024 * 1024 * 2) {
+        throw new Error('File too large. Must be less than 2 MB');
+      }
 
-  if (!updateProduct) {
-    throw new Error("Product with this slug does not exist");
+      // Upload new image to Cloudinary
+      const uploadResponse = await cloudinary.uploader.upload(image, {
+        folder: 'products',
+        overwrite: true // Overwrite existing image with the same name
+      });
+
+      updates.image = uploadResponse.secure_url;
+
+      // Delete the previous image if it's not the default one
+      if (product.image !== 'default.png') {
+        await deleteImage(product.image);
+      }
+    }
+
+    const updateProduct = await Product.findOneAndUpdate(
+      { slug },
+      updates,
+      updateOptions
+    );
+
+    if (!updateProduct) {
+      throw new Error("Product with this slug does not exist");
+    }
+
+    return updateProduct;
+  } catch (error) {
+    throw error;
   }
-
-
-  return updateProduct
-
-
-     }
-      catch (error) {
-      
-     }
 };
-
-
 
 
 

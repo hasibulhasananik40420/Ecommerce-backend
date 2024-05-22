@@ -51,12 +51,13 @@ const productSchema = new Schema(
       type: Number,
       required: [true, "Sold quantity is required"],
       trim: true,
-      default:0,
-      // validate: {
-      //   validator: (v) => v > 0,
-      //   message: (props) =>
-      //     `${props.value} is not valid sold.Sold must be greater than 0.`,
-      // },
+      default: 0,
+      validate: {
+        validator: function(v) {
+          return v >= 0;
+        },
+        message: props => `${props.value} is not valid sold. Sold must be greater than or equal to 0.`,
+      },
     },
 
 
@@ -67,8 +68,7 @@ const productSchema = new Schema(
     },
 
     image:{
-        type:Buffer,
-        contentType:String,
+        type:String,
         required:[true,'Product image is required'],
      },
 

@@ -46,11 +46,16 @@ email: {
         set:(v)=> bcrypt.hashSync(v, bcrypt.genSaltSync(10))
     },
 
-    image:{
-        type:Buffer,
-        contentType:String,
-        required:[true,' User Image is required'],
-     },
+    // image:{
+    //     type:Buffer,
+    //     contentType:String,
+    //     required:[true,' User Image is required'],
+    //  },
+
+    image: {
+        type: String, // Changed from Buffer to String
+        required: [true, 'User image is required'],
+    },
     
     address:{
         type:String,
