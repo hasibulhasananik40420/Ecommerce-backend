@@ -1,10 +1,11 @@
 const Category = require("../models/categoryModel");
 const slugify = require("slugify");
 
-const createCategory = async (name) => {
+const createCategory = async (name,image) => {
   //create category
   const newCategory = await Category.create({
     name: name,
+    image:image,
     slug: slugify(name),
   });
 

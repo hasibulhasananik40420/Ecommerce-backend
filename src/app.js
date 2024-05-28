@@ -55,7 +55,7 @@ app.get('/', (req, res) => {
 
 //client error handleing
 app.use((req,res,next)=>{
-  next(createError(404, "route not found"))
+  next(createError(404, "Something went wrong."))
 })
 
 

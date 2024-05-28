@@ -11,6 +11,12 @@ const categorySchema= new Schema ({
        
     },
 
+    image:{
+        type:String,
+        required:[true,'Product image is required'],
+     },
+
+
   slug:{
         type:String,
         required:[true,'Category slug is required'],

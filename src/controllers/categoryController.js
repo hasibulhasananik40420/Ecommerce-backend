@@ -6,13 +6,27 @@ const {
   updateCategory,
   deleteCategory,
 } = require("../services/categoryService");
+const cloudinary = require('../config/cloudinary');
 
 //handleCreateCategory
 const handleCreateCategory = async (req, res, next) => {
   try {
     const { name } = req.body;
+    const image = req.file
+    if (!image) {
+      throw createError(400, "Image file is required");
+    }
 
-    const newCategory = await createCategory(name);
+    if (image.size > 1024 * 1024 * 2) {
+      throw createError(400, "File too large. It must be less than 2 MB");
+    }
+
+    // Upload image to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(image.path, {
+      folder: 'Categories'
+    });
+
+    const newCategory = await createCategory(name, uploadResponse.secure_url,);
 
     return successResponse(res, {
       statusCode: 201,

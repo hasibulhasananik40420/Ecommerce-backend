@@ -4,11 +4,13 @@ const runValidation = require("../validators");
 const { handleCreateCategory, handleGetCategory, handleSingleCategory, handleUpdateCategory, handleDeleteCategory } = require("../controllers/categoryController");
 const { validateCategory } = require("../validators/category");
 const { isLoggedIn, isAdmin } = require("../middlewares/auth");
+const uploadUserImage = require("../middlewares/uploadFile");
 const categoryRouter = express.Router();
 
 // /api/categories
 categoryRouter.post(
   "/",
+  uploadUserImage.single("image"),
   validateCategory,
   runValidation,
   isLoggedIn,
