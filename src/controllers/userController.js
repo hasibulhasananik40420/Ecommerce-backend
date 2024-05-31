@@ -135,19 +135,23 @@ const processRegister = async (req, res, next) => {
       jsonActivationKey,
       "15m"
     );
-
+   
+    // Load environment variables
+const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL;
+//${clientUrl}/api/users/activate/${token}
     // Prepare email
     const emailData = {
       email,
       subject: "Account Activation Email",
       html: `
         <h2>Hello ${name}</h2>
-        <button>Please click here to <a href="${clientUrl}/api/user/activate/${token}" target="_blank">activate your account</a>.</button>
+        
+        <button>Please click here to <a href="${clientUrl}/activate/${token}" target="_blank">Activate your account</a>.</button>
       `,
     };
 
     // Send email with nodemailer
-    sendEmail(emailData);
+    await sendEmail(emailData);
 
     return successResponse(res, {
       payload: token,
