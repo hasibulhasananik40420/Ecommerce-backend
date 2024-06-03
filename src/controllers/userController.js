@@ -138,7 +138,6 @@ const processRegister = async (req, res, next) => {
    
     // Load environment variables
 const clientUrl = process.env.NEXT_PUBLIC_CLIENT_URL;
-//${clientUrl}/api/users/activate/${token}
     // Prepare email
     const emailData = {
       email,

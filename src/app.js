@@ -22,8 +22,16 @@ const limiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
+
+const corsOptions = {
+  origin: 'http://localhost:3000', 
+  credentials: true, 
+};
+
+
+
 // Enable CORS for all routes
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 app.use(xssClean());

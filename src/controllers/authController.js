@@ -33,7 +33,7 @@ const handleLogin = async (req, res, next) => {
 
     //token and cookie
     // Create JSON web token
-    const accessToken = createJSONWebToken({ user }, jsonAccessKey, "5m");
+    const accessToken = createJSONWebToken({ user }, jsonAccessKey, "15m");
      setAccessTokenCookie(res, accessToken)
    
 
@@ -49,7 +49,8 @@ const handleLogin = async (req, res, next) => {
       statusCode: 200,
       message: "User login successfully",
       payload: {
-        userWithoutPassword,
+        // userWithoutPassword,
+        accessToken
       },
     });
   } catch (error) {

@@ -9,15 +9,6 @@ const validateCategory = [
     .withMessage("Category should be 3 characters long"),
 
 
-    // body("image")
-    // .custom((value, { req }) => {
-    //   if (!req.file) {
-    //     throw new Error("User image is required");
-    //   }
-    //   return true;
-    // })
-    // .withMessage("Category image is required"),
-
  
 ];
 
